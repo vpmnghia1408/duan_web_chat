@@ -1,44 +1,51 @@
-// @ts-nocheck
-import Message from "../models/Message.js";
+import { Message } from "../models/Message.js";
 
-// lấy lịch sử tin nhắn giữa 2 người
-export const getMessages = async (req, res) => {
-  try {
-    const { receiverId } = req.params;
-
-    const messages = await Message.find({
-      $or: [
-        { senderId: req.user._id, receiverId },
-        { senderId: receiverId, receiverId: req.user._id },
-      ],
-    }).sort({ createdAt: 1 });
-
-    return res.status(200).json(messages);
-  } catch (error) {
-    console.error("Lỗi khi lấy lịch sử tin nhắn:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
-  }
-};
-
-// gửi tin nhắn mới
+// 📨 Gửi tin nhắn
 export const sendMessage = async (req, res) => {
   try {
     const { receiverId, content, imgUrl } = req.body;
+    const senderId = req.user._id;
 
-    if (!receiverId || (!content && !imgUrl)) {
-      return res.status(400).json({ message: "Thiếu dữ liệu tin nhắn." });
-    }
-
-    const newMessage = await Message.create({
-      senderId: req.user._id,
+    const message = await Message.create({
+      senderId,
       receiverId,
       content,
       imgUrl,
     });
 
-    return res.status(201).json(newMessage);
+    const populatedMsg = await message.populate([
+      { path: "senderId", select: "username displayName" },
+      { path: "receiverId", select: "username displayName" },
+    ]);
+
+    return res.status(201).json(populatedMsg);
   } catch (error) {
-    console.error("Lỗi khi gửi tin nhắn:", error);
-    return res.status(500).json({ message: "Lỗi hệ thống" });
+    console.error("❌ Lỗi gửi tin nhắn:", error);
+    res.status(500).json({ message: "Lỗi hệ thống" });
+  }
+};
+
+// 📜 Lấy lịch sử chat giữa 2 user
+export const getMessages = async (req, res) => {
+  try {
+    // ✅ Đúng tên param trong route
+    const { receiverId } = req.params;
+    const currentUserId = req.user._id;
+
+    // 🔍 Lấy tin nhắn giữa 2 người (dù ai gửi)
+    const messages = await Message.find({
+      $or: [
+        { senderId: currentUserId, receiverId },
+        { senderId: receiverId, receiverId: currentUserId },
+      ],
+    })
+      .populate("senderId", "username displayName")
+      .populate("receiverId", "username displayName")
+      .sort({ createdAt: 1 });
+
+    return res.status(200).json(messages);
+  } catch (error) {
+    console.error("❌ Lỗi lấy tin nhắn:", error);
+    res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };

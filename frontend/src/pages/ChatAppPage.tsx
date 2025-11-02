@@ -1,21 +1,15 @@
 import { useState, useEffect } from "react";
-import Sidebar from "@/components/SideBar";
-import ChatArea from "@/components/ChatArea";
+import Sidebar from "../components/SideBar/index";
+import ChatArea from "../components/ChatArea/index";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 const ChatAppPage = () => {
-  const [selectedChat, setSelectedChat] = useState<string | null>("mai-le");
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(false);
-
   const user = useAuthStore((s) => s.user);
-  console.log("Home user:", user);
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", isDark);
   }, [isDark]);
 
   return (
@@ -27,7 +21,7 @@ const ChatAppPage = () => {
         onToggleDark={() => setIsDark(!isDark)}
         user={user}
       />
-      <ChatArea selectedChat={selectedChat} isDark={isDark} />
+      <ChatArea selectedChat={selectedChat} isDark={isDark} user={user} />
     </div>
   );
 };

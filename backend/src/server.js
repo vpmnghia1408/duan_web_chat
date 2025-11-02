@@ -3,19 +3,19 @@ import dotenv from "dotenv";
 import { connectDB } from "./libs/db.js";
 import authRoute from "./routes/authRoute.js";
 import userRoute from "./routes/userRoute.js";
+import friendRoute from "./routes/friendRoute.js";
+import messageRoute from "./routes/messageRoute.js";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
-import messageRouter from "./routes/messageRoute.js";
-import { chatSocket } from "./sockets/chatSocket.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { chatSocket } from "./sockets/chatSocket.js";
 
 dotenv.config();
 
 const app = express();
-
-const server = createServer(app); // 👈 dùng http server thay vì app.listen
+const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: ["http://localhost:5173", "http://localhost:5174"],
@@ -25,7 +25,27 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 5001;
 
-// middlewares
+// Gắn io vào app để controller có thể truy cập
+app.set("io", io);
+
+// Lưu map userId ↔ socketId
+const userSockets = new Map();
+
+io.on("connection", (socket) => {
+  const userId = socket.handshake.query.userId;
+  if (userId) {
+    userSockets.set(userId, socket.id);
+    socket.join(userId); // để có thể io.to(userId).emit()
+  }
+
+  socket.on("disconnect", () => {
+    if (userId) userSockets.delete(userId);
+  });
+});
+
+// =======================
+// 🧩 MIDDLEWARES
+// =======================
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -35,20 +55,25 @@ app.use(
   })
 );
 
-// public routes
+// =======================
+// 🌐 ROUTES
+// =======================
 app.use("/api/auth", authRoute);
-
-app.use("/api/messages", messageRouter);
-
-// private routes
 app.use(protectedRoute);
 app.use("/api/users", userRoute);
+app.use("/api/friends", friendRoute);
+app.use("/api/messages", messageRoute);
 
+// =======================
+// ⚙️ DATABASE & SERVER START
+// =======================
 connectDB().then(() => {
   server.listen(PORT, () => {
     console.log(`✅ Server (Express + Socket.IO) đang chạy trên cổng ${PORT}`);
   });
 });
 
-// kích hoạt socket chat
-chatSocket(io); // 👈 gọi hàm socket
+// =======================
+// 💬 SOCKET.IO CHAT SETUP
+// =======================
+chatSocket(io);

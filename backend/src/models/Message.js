@@ -12,16 +12,10 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    content: {
-      type: String,
-      trim: true,
-    },
-    imgUrl: {
-      type: String,
-      trim: true,
-    },
+    content: { type: String, trim: true, default: "" },
+    imgUrl: { type: String, trim: true, default: "" },
   },
-  { timestamps: true } // tự động thêm createdAt, updatedAt
+  { timestamps: true }
 );
 
 messageSchema.set("toJSON", {
@@ -33,4 +27,4 @@ messageSchema.set("toJSON", {
   },
 });
 
-export default mongoose.model("Message", messageSchema);
+export const Message = mongoose.model("Message", messageSchema);

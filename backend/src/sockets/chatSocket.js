@@ -1,28 +1,69 @@
-// sockets/chatSocket.js
-import Message from "../models/Message.js";
-
-const onlineUsers = new Map();
+import { Message } from "../models/Message.js";
+import Friend from "../models/friendModel.js";
 
 export const chatSocket = (io) => {
   io.on("connection", (socket) => {
-    console.log("🟢 user connected:", socket.id);
+    console.log("🟢 Client connected:", socket.id);
 
-    // Khi người dùng join vào 1 "phòng chat" cụ thể
-    socket.on("join_room", (roomId) => {
-      socket.join(roomId);
-      console.log(`📥 user ${socket.id} joined room ${roomId}`);
+    // Khi user join phòng riêng của họ
+    socket.on("join", (userId) => {
+      if (!userId) return;
+      socket.join(userId.toString());
+      console.log(`✅ User ${userId} joined room ${userId}`);
     });
 
-    // Khi người dùng gửi tin nhắn
-    socket.on("send_message", (data) => {
-      console.log("💬 message received:", data);
+    // Khi gửi tin nhắn
+    socket.on(
+      "sendMessage",
+      async ({ senderId, receiverId, content, imgUrl }) => {
+        try {
+          if (!senderId || !receiverId || !content) {
+            socket.emit("errorMessage", "Thiếu dữ liệu tin nhắn!");
+            return;
+          }
 
-      // Phát tin nhắn đến tất cả người khác trong cùng phòng (trừ người gửi)
-      socket.to(data.room).emit("receive_message", data);
-    });
+          // 🔒 Kiểm tra có phải bạn bè không
+          const isFriend = await Friend.findOne({
+            $or: [
+              { sender: senderId, receiver: receiverId, status: "accepted" },
+              { sender: receiverId, receiver: senderId, status: "accepted" },
+            ],
+          });
 
+          if (!isFriend) {
+            socket.emit("errorMessage", "Hai người chưa phải bạn bè!");
+            return;
+          }
+
+          // 💾 Lưu tin nhắn vào DB
+          const message = await Message.create({
+            senderId,
+            receiverId,
+            content,
+            imgUrl,
+          });
+
+          // 🧠 Populate thông tin người gửi & người nhận
+          const populatedMsg = await message.populate([
+            { path: "senderId", select: "username displayName" },
+            { path: "receiverId", select: "username displayName" },
+          ]);
+
+          // 📡 Gửi tin nhắn realtime cho cả 2 bên
+          io.to(senderId.toString()).emit("receiveMessage", populatedMsg);
+          io.to(receiverId.toString()).emit("receiveMessage", populatedMsg);
+
+          console.log(`💬 Tin nhắn từ ${senderId} → ${receiverId}: ${content}`);
+        } catch (error) {
+          console.error("❌ Lỗi gửi tin nhắn:", error);
+          socket.emit("errorMessage", "Lỗi server khi gửi tin nhắn!");
+        }
+      }
+    );
+
+    // Khi ngắt kết nối
     socket.on("disconnect", () => {
-      console.log("🔴 user disconnected:", socket.id);
+      console.log("🔴 Client disconnected:", socket.id);
     });
   });
 };
