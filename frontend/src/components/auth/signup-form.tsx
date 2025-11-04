@@ -1,17 +1,15 @@
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Label } from "../ui/label";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNavigate } from "react-router";
+import { User, Mail, Lock, Zap, AlertCircle } from "lucide-react";
+import { useState } from "react";
 
 const signUpSchema = z.object({
-  firstname: z.string().min(1, "Tên bắt buộc phải có"),
-  lastname: z.string().min(1, "Họ bắt buộc phải có"),
+  firstName: z.string().min(1, "Tên bắt buộc phải có"),
+  lastName: z.string().min(1, "Họ bắt buộc phải có"),
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
   email: z.email("Email không hợp lệ"),
   password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
@@ -25,6 +23,8 @@ export function SignupForm({
 }: React.ComponentProps<"div">) {
   const { signUp } = useAuthStore();
   const navigate = useNavigate();
+  const [apiError, setApiError] = useState<string>("");
+
   const {
     register,
     handleSubmit,
@@ -34,141 +34,302 @@ export function SignupForm({
   });
 
   const onSubmit = async (data: SignUpFormValues) => {
-    const { firstname, lastname, username, email, password } = data;
+    setApiError("");
+    const { firstName, lastName, username, email, password } = data;
 
-    // gọi backend để signup
-    await signUp(username, password, email, firstname, lastname);
-
-    navigate("/signin");
+    try {
+      await signUp(username, password, email, firstName, lastName);
+      navigate("/signin");
+    } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Đăng ký không thành công. Vui lòng thử lại.";
+      setApiError(errorMsg);
+    }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0 border-border">
-        <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex flex-col gap-6">
-              {/* header - logo */}
-              <div className="flex flex-col items-center text-center gap-2">
-                <a href="/" className="mx-auto block w-fit text-center">
-                  <img src="/logo.svg" alt="logo" />
-                </a>
-
-                <h1 className="text-2xl font-bold">Tạo tài khoản Moji</h1>
-                <p className="text-muted-foreground text-balance">
-                  Chào mừng bạn! Hãy đăng ký để bắt đầu!
-                </p>
-              </div>
-
-              {/* họ & tên */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="lastname" className="block text-sm">
-                    Họ
-                  </Label>
-                  <Input type="text" id="lastname" {...register("lastname")} />
-
-                  {errors.lastname && (
-                    <p className="text-destructive text-sm">
-                      {errors.lastname.message}
-                    </p>
-                  )}
+    <div className={cn("w-full max-w-6xl", className)} {...props}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        {/* Form Section */}
+        <div className="flex flex-col justify-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8 md:p-10">
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-white" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fistname" className="block text-sm">
-                    Tên
-                  </Label>
-                  <Input
-                    type="text"
-                    id="firstname"
-                    {...register("firstname")}
-                  />
-                  {errors.firstname && (
-                    <p className="text-destructive text-sm">
-                      {errors.firstname.message}
-                    </p>
-                  )}
+                <h1 className="text-2xl font-bold text-gray-900">Moji</h1>
+              </div>
+              <p className="text-gray-600 text-sm">
+                Tạo tài khoản và bắt đầu hành trình của bạn
+              </p>
+            </div>
+
+            {/* API Error Message */}
+            {apiError && (
+              <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-800 font-medium">
+                    Lỗi đăng ký
+                  </p>
+                  <p className="text-sm text-red-600 mt-1">{apiError}</p>
                 </div>
               </div>
+            )}
 
-              {/* username */}
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="username" className="block text-sm">
+            {/* Form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {/* Username */}
+              <div>
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Tên đăng nhập
-                </Label>
-                <Input
-                  type="text"
-                  id="username"
-                  placeholder="moji"
-                  {...register("username")}
-                />
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="username"
+                    type="text"
+                    placeholder="moji"
+                    className="w-full pl-11 pr-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                    {...register("username")}
+                  />
+                </div>
                 {errors.username && (
-                  <p className="text-destructive text-sm">
+                  <p className="text-red-500 text-sm mt-1">
                     {errors.username.message}
                   </p>
                 )}
               </div>
 
-              {/* email */}
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="email" className="block text-sm">
+              {/* Họ & Tên */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="lastName"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Họ
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      id="lastName"
+                      type="text"
+                      placeholder="Nguyễn"
+                      className="w-full pl-11 pr-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      {...register("lastName")}
+                    />
+                  </div>
+                  {errors.lastName && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.lastName.message}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label
+                    htmlFor="firstName"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Tên
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      id="firstName"
+                      type="text"
+                      placeholder="Văn A"
+                      className="w-full pl-11 pr-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                      {...register("firstName")}
+                    />
+                  </div>
+                  {errors.firstName && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.firstName.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Email
-                </Label>
-                <Input
-                  type="email"
-                  id="email"
-                  placeholder="m@gmail.com"
-                  {...register("email")}
-                />
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="m@gmail.com"
+                    className="w-full pl-11 pr-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                    {...register("email")}
+                  />
+                </div>
                 {errors.email && (
-                  <p className="text-destructive text-sm">
+                  <p className="text-red-500 text-sm mt-1">
                     {errors.email.message}
                   </p>
                 )}
               </div>
 
-              {/* password */}
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="password" className="block text-sm">
+              {/* Password */}
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Mật khẩu
-                </Label>
-                <Input
-                  type="password"
-                  id="password"
-                  {...register("password")}
-                />
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full pl-11 pr-4 py-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                    {...register("password")}
+                  />
+                </div>
                 {errors.password && (
-                  <p className="text-destructive text-sm">
+                  <p className="text-red-500 text-sm mt-1">
                     {errors.password.message}
                   </p>
                 )}
               </div>
 
-              {/* nút đăng ký */}
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                Tạo tài khoản
-              </Button>
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Đang xử lý..." : "Tạo tài khoản"}
+              </button>
+            </form>
 
-              <div className="text-center text-sm">
-                Đã có tài khoản?{" "}
-                <a href="/signin" className="underline underline-offset-4">
-                  Đăng nhập
-                </a>
-              </div>
-            </div>
-          </form>
-          <div className="bg-muted relative hidden md:block">
-            <img
-              src="/placeholderSignUp.png"
-              alt="Image"
-              className="absolute top-1/2 -translate-y-1/2 object-cover"
-            />
+            {/* Footer */}
+            <p className="text-center text-gray-600 text-sm mt-6">
+              Đã có tài khoản?{" "}
+              <a
+                href="/signin"
+                className="text-purple-600 hover:text-purple-700 font-semibold"
+              >
+                Đăng nhập
+              </a>
+            </p>
           </div>
-        </CardContent>
-      </Card>
-      <div className=" text-xs text-balance px-6 text-center *:[a]:hover:text-primary text-muted-foreground *:[a]:underline *:[a]:underline-offetset-4">
-        Bằng cách tiếp tục, bạn đồng ý với <a href="#">Điều khoản dịch vụ</a> và{" "}
-        <a href="#">Chính sách bảo mật</a> của chúng tôi.
+        </div>
+
+        {/* Illustration Section */}
+        <div className="hidden lg:flex items-center justify-center">
+          <div className="relative w-full h-full min-h-96">
+            {/* Gradient Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-300 via-purple-300 to-yellow-200 rounded-3xl opacity-20 blur-2xl"></div>
+
+            {/* Main Illustration */}
+            <div className="relative flex items-center justify-center h-full">
+              <svg
+                viewBox="0 0 200 300"
+                className="w-full h-full max-w-xs drop-shadow-2xl"
+              >
+                {/* Device */}
+                <rect
+                  x="30"
+                  y="20"
+                  width="140"
+                  height="200"
+                  rx="20"
+                  fill="#FBBF24"
+                  opacity="0.9"
+                />
+                <rect
+                  x="35"
+                  y="30"
+                  width="130"
+                  height="180"
+                  rx="15"
+                  fill="#FEF3C7"
+                />
+
+                {/* Top Section */}
+                <rect
+                  x="50"
+                  y="45"
+                  width="100"
+                  height="35"
+                  rx="4"
+                  fill="#8B5CF6"
+                  opacity="0.7"
+                />
+                <circle cx="100" cy="62" r="8" fill="white" />
+
+                {/* Form Lines */}
+                <rect
+                  x="50"
+                  y="95"
+                  width="100"
+                  height="6"
+                  rx="3"
+                  fill="#8B5CF6"
+                  opacity="0.5"
+                />
+                <rect
+                  x="50"
+                  y="110"
+                  width="100"
+                  height="6"
+                  rx="3"
+                  fill="#8B5CF6"
+                  opacity="0.3"
+                />
+                <rect
+                  x="50"
+                  y="125"
+                  width="60"
+                  height="6"
+                  rx="3"
+                  fill="#8B5CF6"
+                  opacity="0.3"
+                />
+
+                {/* Character */}
+                <circle cx="140" cy="250" r="12" fill="#7C3AED" />
+                <ellipse
+                  cx="140"
+                  cy="280"
+                  rx="25"
+                  ry="15"
+                  fill="#A78BFA"
+                  opacity="0.8"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Terms */}
+      <div className="text-xs text-balance px-6 text-center text-gray-500 mt-6">
+        Bằng cách tiếp tục, bạn đồng ý với{" "}
+        <a href="#" className="underline hover:text-purple-600">
+          Điều khoản dịch vụ
+        </a>{" "}
+        và{" "}
+        <a href="#" className="underline hover:text-purple-600">
+          Chính sách bảo mật
+        </a>{" "}
+        của chúng tôi.
       </div>
     </div>
   );

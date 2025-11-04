@@ -14,19 +14,25 @@ export const signUp = async (req, res) => {
 
     if (!username || !password || !email || !firstName || !lastName) {
       return res.status(400).json({
-        message: "Không thể thiếu username, password, email, firstName, và lastName",
+        message:
+          "Không thể thiếu username, password, email, firstName, và lastName",
       });
     }
 
-    // kiểm tra username tồn tại chưa
-    const duplicate = await User.findOne({ username });
+    // Kiểm tra username tồn tại chưa
+    const duplicateUsername = await User.findOne({ username });
+    if (duplicateUsername) {
+      return res.status(409).json({ message: "Tên đăng nhập đã tồn tại" });
+    }
 
-    if (duplicate) {
-      return res.status(409).json({ message: "username đã tồn tại" });
+    // THÊM: Kiểm tra email tồn tại chưa
+    const duplicateEmail = await User.findOne({ email });
+    if (duplicateEmail) {
+      return res.status(409).json({ message: "Email đã được sử dụng" });
     }
 
     // mã hoá password
-    const hashedPassword = await bcrypt.hash(password, 10); // salt = 10
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // tạo user mới
     await User.create({
@@ -36,10 +42,20 @@ export const signUp = async (req, res) => {
       displayName: `${firstName} ${lastName}`,
     });
 
-    // return
     return res.sendStatus(204);
   } catch (error) {
-    console.error("Lỗi khi gọi signUp", error);
+    console.error("Lỗi khi gọi signUp:", error);
+
+    // Xử lý lỗi duplicate key từ MongoDB
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({
+        message: `${
+          field === "email" ? "Email" : "Tên đăng nhập"
+        } đã được sử dụng`,
+      });
+    }
+
     return res.status(500).json({ message: "Lỗi hệ thống" });
   }
 };
@@ -140,7 +156,9 @@ export const refreshToken = async (req, res) => {
     const session = await Session.findOne({ refreshToken: token });
 
     if (!session) {
-      return res.status(403).json({ message: "Token không hợp lệ hoặc đã hết hạn" });
+      return res
+        .status(403)
+        .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
     }
 
     // kiểm tra hết hạn chưa
