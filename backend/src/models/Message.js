@@ -10,10 +10,21 @@ const messageSchema = new mongoose.Schema(
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+    },
+    // Optional groupId for group chats
+    groupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
     },
     content: { type: String, trim: true, default: "" },
     imgUrl: { type: String, trim: true, default: "" },
+    audioUrl: { type: String, trim: true, default: "" },
+    gifUrl: { type: String, trim: true, default: "" },
+    messageType: { 
+      type: String, 
+      enum: ["text", "image", "audio", "gif", "emoji"], 
+      default: "text" 
+    },
   },
   { timestamps: true }
 );
@@ -28,3 +39,4 @@ messageSchema.set("toJSON", {
 });
 
 export const Message = mongoose.model("Message", messageSchema);
+export default Message;

@@ -21,7 +21,12 @@ const ChatAppPage = () => {
         onToggleDark={() => setIsDark(!isDark)}
         user={user}
       />
-      <ChatArea selectedChat={selectedChat} isDark={isDark} user={user} />
+      <ChatArea 
+        selectedChat={selectedChat} 
+        isDark={isDark} 
+        user={user}
+        onSelectChat={setSelectedChat}
+      />
     </div>
   );
 };

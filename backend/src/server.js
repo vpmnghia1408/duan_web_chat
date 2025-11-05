@@ -5,6 +5,11 @@ import authRoute from "./routes/authRoute.js";
 import userRoute from "./routes/userRoute.js";
 import friendRoute from "./routes/friendRoute.js";
 import messageRoute from "./routes/messageRoute.js";
+import groupRoute from "./routes/groupRoute.js";
+import uploadRoute from "./routes/uploadRoute.js";
+import chatCustomizationRoute from "./routes/chatCustomizationRoute.js";
+import { fileURLToPath } from "url";
+import path from "path";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
 import cors from "cors";
@@ -13,6 +18,9 @@ import { Server } from "socket.io";
 import { chatSocket } from "./sockets/chatSocket.js";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = createServer(app);
@@ -36,10 +44,23 @@ io.on("connection", (socket) => {
   if (userId) {
     userSockets.set(userId, socket.id);
     socket.join(userId); // để có thể io.to(userId).emit()
+    
+    // Emit user online status đến tất cả bạn bè
+    io.emit("user_status_changed", {
+      userId: userId.toString(),
+      status: "online",
+    });
   }
 
   socket.on("disconnect", () => {
-    if (userId) userSockets.delete(userId);
+    if (userId) {
+      userSockets.delete(userId);
+      // Emit user offline status đến tất cả bạn bè
+      io.emit("user_status_changed", {
+        userId: userId.toString(),
+        status: "offline",
+      });
+    }
   });
 });
 
@@ -55,6 +76,11 @@ app.use(
   })
 );
 
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Serve static files for avatars specifically
+app.use("/uploads/avatars", express.static(path.join(__dirname, "../uploads/avatars")));
+
 // =======================
 // 🌐 ROUTES
 // =======================
@@ -63,6 +89,9 @@ app.use(protectedRoute);
 app.use("/api/users", userRoute);
 app.use("/api/friends", friendRoute);
 app.use("/api/messages", messageRoute);
+app.use("/api/groups", groupRoute);
+app.use("/api/upload", uploadRoute);
+app.use("/api/chat-customizations", chatCustomizationRoute);
 
 // =======================
 // ⚙️ DATABASE & SERVER START

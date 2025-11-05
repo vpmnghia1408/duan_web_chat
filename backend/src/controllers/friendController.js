@@ -41,8 +41,8 @@ export const sendFriendRequest = async (req, res) => {
       status: "pending",
     });
 
-    request = await request.populate("sender", "username email displayName");
-    request = await request.populate("receiver", "username email displayName");
+    request = await request.populate("sender", "username email displayName avatarUrl status");
+    request = await request.populate("receiver", "username email displayName avatarUrl status");
 
     // ✅ Gửi realtime đến người nhận
     const io = req.app.get("io");
@@ -99,10 +99,40 @@ export const getFriends = async (req, res) => {
         { receiver: userId, status: "accepted" },
       ],
     })
-      .populate("sender", "username email displayName")
-      .populate("receiver", "username email displayName");
+      .populate("sender", "username email displayName avatarUrl")
+      .populate("receiver", "username email displayName avatarUrl");
 
-    res.status(200).json(friends);
+    // Lấy danh sách user online từ socket
+    const io = req.app && req.app.get("io");
+    const onlineUserIds = new Set();
+    if (io) {
+      // Lấy tất cả sockets đang connected
+      const sockets = await io.fetchSockets();
+      sockets.forEach((s) => {
+        const uid = s.handshake.query.userId;
+        if (uid) onlineUserIds.add(uid.toString());
+      });
+    }
+
+    // Thêm status vào friends
+    const friendsWithStatus = friends.map((f) => {
+      const senderId = f.sender._id.toString();
+      const receiverId = f.receiver._id.toString();
+      
+      return {
+        ...f.toObject(),
+        sender: {
+          ...f.sender.toObject(),
+          status: onlineUserIds.has(senderId) ? "online" : "offline",
+        },
+        receiver: {
+          ...f.receiver.toObject(),
+          status: onlineUserIds.has(receiverId) ? "online" : "offline",
+        },
+      };
+    });
+
+    res.status(200).json(friendsWithStatus);
   } catch (error) {
     console.error("❌ Lỗi lấy danh sách bạn bè:", error);
     res.status(500).json({ message: "Lỗi hệ thống" });
@@ -117,8 +147,8 @@ export const getPendingRequests = async (req, res) => {
       $or: [{ receiver: userId }, { sender: userId }],
       status: "pending",
     })
-      .populate("sender", "username email displayName")
-      .populate("receiver", "username email displayName");
+      .populate("sender", "username email displayName avatarUrl status")
+      .populate("receiver", "username email displayName avatarUrl status");
 
     res.status(200).json(pending);
   } catch (error) {

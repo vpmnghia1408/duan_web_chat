@@ -1,10 +1,8 @@
-import axios from "axios";
-
-const API_URL = "http://localhost:5001/api/friends";
+import api from "@/lib/axios";
 
 export const friendService = {
   async getFriends() {
-    const res = await axios.get(API_URL, { withCredentials: true });
+    const res = await api.get("/friends");
     return res.data;
   },
 };
